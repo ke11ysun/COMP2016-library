@@ -1,0 +1,208 @@
+DROP TABLE Book CASCADE CONSTRAINT
+--
+DROP TABLE Student CASCADE CONSTRAINT
+--
+DROP TABLE Borrows CASCADE CONSTRAINT
+--
+CREATE TABLE Book
+ (ISBN VARCHAR(30),
+ title VARCHAR(50),
+ author VARCHAR(20),
+ amount_Available INTEGER,
+ location VARCHAR(20),
+ PRIMARY KEY (ISBN))
+--
+ CREATE TABLE Student
+ (sid VARCHAR(20),
+ name VARCHAR(20),
+ gender CHAR,
+ major VARCHAR(20),
+ ISBN VARCHAR(30),
+ reserve_date DATE,
+ PRIMARY KEY (sid),
+ FOREIGN KEY (ISBN) REFERENCES Book)
+--
+ CREATE TABLE Borrows
+ (ISBN VARCHAR(30),
+ sid VARCHAR(20),
+ borrow_date DATE,
+ due_date DATE,
+ is_renewed INTEGER,
+ PRIMARY KEY (ISBN,sid),
+ FOREIGN KEY (ISBN) REFERENCES Book,
+ FOREIGN KEY (sid) REFERENCES Student)
+--
+INSERT INTO STUDENT VALUES('12345678', 'A', 'M', 'Comp', NULL, NULL)
+--
+INSERT INTO STUDENT VALUES('11111111', 'B', 'M', 'Math', NULL, NULL)
+--
+INSERT INTO STUDENT VALUES('22222222', 'C', 'F', 'COMM', NULL, NULL)
+--
+INSERT INTO STUDENT VALUES('33333333', 'D', 'F', 'COMM', NULL, NULL)
+--
+INSERT INTO STUDENT VALUES('44444444', 'E', 'M', 'Comp', NULL, NULL)
+--
+INSERT INTO STUDENT VALUES('55555555', 'F', 'M', 'COMM', NULL, NULL)
+--
+INSERT INTO STUDENT VALUES('66666666', 'G', 'F', 'Math', NULL, NULL)
+--
+INSERT INTO STUDENT VALUES('77777777', 'H', 'M', 'Comp', NULL, NULL)
+--
+INSERT INTO BOOK VALUES('A0000', 'AA', 'XX', 0, 'S1E01')
+--
+INSERT INTO BOOK VALUES('B0000', 'BB', 'YY', 0, 'S2E02')
+--
+INSERT INTO BOOK VALUES('C1111', 'CC', 'ZZ', 2, 'D1E11')
+--
+INSERT INTO BOOK VALUES('B0001', 'DD', 'UU', 2, 'G1E00')
+--
+INSERT INTO BOOK VALUES('A1111', 'EE', 'VV', 2, 'B1E00')
+--
+INSERT INTO BOOK VALUES('D0101', 'FF', 'WW', 1, 'B2E11')
+--
+INSERT INTO BOOK VALUES('E0000', 'GG', 'PP', 0, 'X0E22')
+--
+INSERT INTO BOOK VALUES('E0100', 'HH', 'QQ', 2, 'X0E21')
+--
+INSERT INTO BOOK VALUES('E0111', 'II', 'RR', 0, 'X0E44')
+--
+INSERT INTO BORROWS VALUES('A0000', '11111111', '30-MAR-16', '27-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('B0000', '22222222', '15-MAR-16', '26-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('A0000', '33333333', '26-MAR-16', '23-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('B0000', '11111111', '15-MAR-16', '26-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('C1111', '44444444', '18-MAR-16', '29-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('B0001', '44444444', '10-APR-16', '08-MAY-16', 0)
+--
+INSERT INTO BORROWS VALUES('A0000', '44444444', '25-MAR-16', '22-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('C1111', '33333333', '25-MAR-16', '22-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('D0101', '44444444', '26-MAR-16', '23-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('A1111', '44444444', '27-MAR-16', '24-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('A1111', '55555555', '15-MAR-16', '12-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('C1111', '55555555', '25-MAR-16', '22-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('E0000', '11111111', '18-MAR-16', '15-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('A1111', '33333333', '25-MAR-16', '22-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('B0001', '33333333', '25-MAR-16', '22-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('D0101', '33333333', '28-MAR-16', '25-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('D0101', '11111111', '04-MAR-16', '01-APR-16', 0)
+--
+INSERT INTO BORROWS VALUES('E0111', '22222222', '26-MAR-16', '23-APR-16', 0)
+--
+UPDATE STUDENT SET ISBN = 'A0000', RESERVE_DATE = '21-APR-16' WHERE SID = '12345678'
+--
+UPDATE STUDENT SET ISBN = 'E0000', RESERVE_DATE = '21-APR-16' WHERE SID = '66666666'
+--
+UPDATE BORROWS SET IS_RENEWED = 1 WHERE SID = '22222222' AND ISBN = 'B0000'
+--
+UPDATE BORROWS SET IS_RENEWED = 1 WHERE SID = '11111111' AND ISBN = 'B0000'
+--
+UPDATE BORROWS SET IS_RENEWED = 1 WHERE SID = '44444444' AND ISBN = 'C1111'
+--
+CREATE OR REPLACE PROCEDURE borrow_before_constraint
+(ISBNn VARCHAR, sidn VARCHAR, bdate date, ddate date, is_renewedn INTEGER) as
+	amt INTEGER; occ INTEGER; due INTEGER; oth INTEGER; res INTEGER; otd DATE; red DATE; tmd NUMBER; 
+ BEGIN
+	SELECT COUNT(*) INTO tmd FROM Book WHERE ISBN = ISBNn AND amount_Available > 0;
+	SELECT COUNT(*) INTO occ FROM Borrows WHERE sid = sidn;
+	SELECT COUNT(*) INTO due FROM Borrows WHERE sid = sidn AND due_date < sysdate;
+	SELECT COUNT(*) INTO oth FROM Student WHERE ISBN= ISBNn AND sid<>sidn;
+	SELECT COUNT(*) INTO res FROM Student WHERE ISBN=ISBNn AND sid=sidn;
+	IF(tmd < -1) THEN
+	RAISE_APPLICATION_ERROR(-20050, 'Invalid borrow: Kidding.');
+	ELSIF(tmd < 1) THEN
+		RAISE_APPLICATION_ERROR(-20051, 'Invalid borrow: No book available at present.');
+	ELSIF(occ>=5) THEN
+		RAISE_APPLICATION_ERROR(-20052, 'Invalid borrow: You have already borrowed 5 books.');
+	ELSIF(due>0) THEN
+		RAISE_APPLICATION_ERROR(-20053, 'Invalid borrow: You have borrowed book overdue.');
+	ELSIF(oth>0 AND res=0) THEN
+		RAISE_APPLICATION_ERROR(-20054, 'Invalid borrow: The book has already been reserved by another student.');
+	ELSIF(oth>0) THEN
+		SELECT MIN(reserve_date) INTO otd FROM Student WHERE ISBN=ISBNn AND sid<>sidn;
+		IF(res>0) THEN
+		SELECT reserve_date INTO red FROM Student WHERE ISBN=ISBNn AND sid=sidn;
+		END IF;
+		IF(otd<red) THEN
+		RAISE_APPLICATION_ERROR(-20055, 'Invalid borrow: the student is not the first one who reserved this book.');
+		END IF;
+	END IF;
+	INSERT INTO BORROWS VALUES(ISBNn, sidn, bdate, ddate, is_renewedn);
+ END;
+--
+CREATE OR REPLACE TRIGGER borrow_after_constraint
+AFTER INSERT ON Borrows
+FOR EACH ROW
+DECLARE
+	res INTEGER;
+BEGIN
+	SELECT COUNT(*) INTO res FROM Student WHERE ISBN=:new.ISBN AND sid=:new.sid;
+	IF(res>0) THEN
+		UPDATE Student SET ISBN=NULL, reserve_date=NULL WHERE sid=:new.sid;
+		UPDATE Book SET amount_Available=amount_Available-1 WHERE ISBN=:new.ISBN;
+	ELSE
+		UPDATE Book SET amount_Available=amount_Available-1 WHERE ISBN=:new.ISBN;
+	END IF;
+END;
+--
+CREATE OR REPLACE TRIGGER return_constraint
+AFTER DELETE ON Borrows
+FOR EACH ROW
+BEGIN
+	UPDATE Book SET amount_Available=amount_Available+1 Where ISBN=:old.ISBN;
+END;
+--
+CREATE OR REPLACE PROCEDURE renew_constraint
+(ISBNn VARCHAR,sidn VARCHAR) as
+due DATE; ren INTEGER; ovr INTEGER; res INTEGER;
+BEGIN 
+	SELECT due_date INTO due FROM Borrows WHERE sid=sidn AND ISBN=ISBNn;
+	SELECT is_renewed INTO ren FROM Borrows WHERE sid=sidn AND ISBN=ISBNn;
+	SELECT COUNT(*) INTO ovr FROM Borrows WHERE sid=sidn AND due_date<sysdate;
+	SELECT COUNT(*) INTO res FROM Student WHERE ISBN=ISBNn; 
+	IF ren=1 THEN
+		DBMS_OUTPUT.PUT_LINE('Invalid renew: the book has been renewed.');
+		RAISE_APPLICATION_ERROR(-20021, 'Invalid renew: The book has already been renewed.');
+	ELSIF(ovr>0) THEN
+		DBMS_OUTPUT.PUT_LINE('Invalid renew: the student has book overdue.');
+		RAISE_APPLICATION_ERROR(-20022, 'Invalid renew: You have borrowed book overdue.');
+	ELSIF(res>0) THEN
+		DBMS_OUTPUT.PUT_LINE('Invalid renew: the book is reserved by others.');
+		RAISE_APPLICATION_ERROR(-20023, 'Invalid renew: The book has already been reserved by another student.');
+	ELSIF(due-sysdate>14) THEN
+		DBMS_OUTPUT.PUT_LINE('Invalid renew: it is too early(more than 2 weeks) to renew.');
+		RAISE_APPLICATION_ERROR(-20024, 'Invalid renew: Please wait until the second half of the borrow period.');
+	END IF;
+	UPDATE BORROWS SET DUE_DATE = due+14 , IS_RENEWED = 1 WHERE SID = sidn AND ISBN = ISBNn;
+END;
+--
+CREATE OR REPLACE PROCEDURE reserve_constraint
+(ISBNn VARCHAR, sidn VARCHAR, reda DATE)as
+amt INTEGER; bor INTEGER; res VARCHAR(20);
+BEGIN
+	SELECT amount_Available INTO amt FROM Book WHERE ISBN=ISBNn;
+	SELECT COUNT(*) INTO bor FROM Borrows WHERE ISBN=ISBNn and sid= sidn;
+	SELECT ISBN INTO res FROM Student WHERE sid= sidn;
+	IF (amt>0) THEN
+		RAISE_APPLICATION_ERROR(-20111, 'Invalid reserve: There is book available, no need to reserve.');
+	ELSIF(bor>0) THEN
+		RAISE_APPLICATION_ERROR(-20112, 'Invalid reserve: You have already borrowed this book.');
+	ELSIF(res IS NOT NULL) THEN
+		RAISE_APPLICATION_ERROR(-20113, 'Invalid reserve: You have already reserved a book.');
+	END IF;
+UPDATE STUDENT SET ISBN =  ISBNn , RESERVE_DATE = reda WHERE SID =sidn;
+END;
+--
